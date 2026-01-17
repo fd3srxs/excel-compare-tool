@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Comparison Tool</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS with Style support -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="bg-white shadow-xl rounded-2xl p-8 max-w-lg w-full text-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Excel Compare</h1>
+        <p class="text-gray-500 mb-8">Upload two Excel files to highlight differences.</p>
+
+        <div class="space-y-6">
+            <!-- File 1 Input -->
+            <div class="text-left">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Original File (File 1)</label>
+                <input type="file" id="file1" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-blue-50 file:text-blue-700
+                    hover:file:bg-blue-100 cursor-pointer border border-gray-200 rounded-lg p-2
+                "/>
+            </div>
+
+            <!-- File 2 Input -->
+            <div class="text-left">
+                <label class="block text-sm font-medium text-gray-700 mb-1">New File (File 2)</label>
+                <input type="file" id="file2" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-green-50 file:text-green-700
+                    hover:file:bg-green-100 cursor-pointer border border-gray-200 rounded-lg p-2
+                "/>
+            </div>
+
+            <button id="compareBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition duration-200 shadow-md transform hover:scale-[1.02]">
+                Compare & Download Result
+            </button>
+            
+            <p id="status" class="text-sm text-gray-600 hidden"></p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('compareBtn').addEventListener('click', async () => {
+            const file1Input = document.getElementById('file1');
+            const file2Input = document.getElementById('file2');
+            const status = document.getElementById('status');
+
+            if (!file1Input.files[0] || !file2Input.files[0]) {
+                alert('Please select both files.');
+                return;
+            }
+
+            status.textContent = "Processing...";
+            status.classList.remove('hidden');
+
+            try {
+                const data1 = await readFile(file1Input.files[0]);
+                const data2 = await readFile(file2Input.files[0]);
+
+                const wb1 = XLSX.read(data1, {type: 'array'});
+                const wb2 = XLSX.read(data2, {type: 'array'});
+                
+                const outputWb = XLSX.utils.book_new();
+
+                wb1.SheetNames.forEach(sheetName => {
+                    const ws1 = wb1.Sheets[sheetName];
+                    const ws2 = wb2.Sheets[sheetName]; // May be undefined if sheet is missing
+
+                    // Convert sheet to JSON matrix to easily iterate (or range based)
+                    // We'll iterate the range directly to preserve structure
+                    
+                    const range = XLSX.utils.decode_range(ws1['!ref'] || "A1");
+                    
+                    // Create a new sheet for output by deep copying ws1 essential data
+                    // Or easier: modify ws1 in place and append to new workbook? 
+                    // Let's create a fresh sheet to avoid carrying over weird metadata, copy values.
+                    
+                    const newWs = {};
+                    newWs['!ref'] = ws1['!ref'];
+                    newWs['!cols'] = ws1['!cols'];
+                    newWs['!merges'] = ws1['!merges'];
+
+                    for(let R = range.s.r; R <= range.e.r; ++R) {
+                        for(let C = range.s.c; C <= range.e.c; ++C) {
+                            const cellAddr = XLSX.utils.encode_cell({r:R, c:C});
+                            const cell1 = ws1[cellAddr];
+                            const cell2 = ws2 ? ws2[cellAddr] : undefined;
+                            
+                            if (!cell1) continue; // Skip empty cells (or handle if needed)
+
+                            // Clone cell 1 properties
+                            const newCell = { 
+                                t: cell1.t, 
+                                v: cell1.v,
+                                w: cell1.w,
+                                s: { font: { color: { rgb: "000000" } } } // Default black
+                            };
+
+                            let isDiff = false;
+                            
+                            if (!cell2) {
+                                isDiff = true; // Exists in 1 but not 2
+                            } else if (cell1.v != cell2.v) {
+                                isDiff = true; // Values differ
+                            }
+
+                            if (isDiff) {
+                                newCell.s = { 
+                                    font: { 
+                                        color: { rgb: "FF0000" },
+                                        bold: true
+                                    } 
+                                };
+                            }
+
+                            newWs[cellAddr] = newCell;
+                        }
+                    }
+
+                    XLSX.utils.book_append_sheet(outputWb, newWs, sheetName);
+                });
+
+                XLSX.writeFile(outputWb, "comparison_result.xlsx");
+                status.textContent = "Done! Download started.";
+
+            } catch (err) {
+                console.error(err);
+                status.textContent = "Error: " + err.message;
+                status.className = "text-sm text-red-600";
+            }
+        });
+
+        function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+    </script>
+</body>
+</html>

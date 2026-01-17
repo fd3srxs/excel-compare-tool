@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Comparison Tool</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>Excel Comparison Tool</h1>
+        <p class="description">Upload two Excel files to compare them. Differences will be highlighted in red in the downloaded file.</p>
+        
+        <form action="/compare" method="post" enctype="multipart/form-data">
+            <div class="file-input-group">
+                <label for="file1">First Excel File</label>
+                <input type="file" name="file1" id="file1" accept=".xlsx, .xlsm" required>
+            </div>
+            
+            <div class="file-input-group">
+                <label for="file2">Second Excel File</label>
+                <input type="file" name="file2" id="file2" accept=".xlsx, .xlsm" required>
+            </div>
+            
+            <button type="submit" class="btn-compare">Compare Files</button>
+        </form>
+    </div>
+</body>
+</html>

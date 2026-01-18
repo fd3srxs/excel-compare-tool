@@ -1,32 +1,140 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel Comparison Tool</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <title>Excel 比對工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Excel Comparison Tool</h1>
-        <p class="description">Upload two Excel files to compare them. Differences will be highlighted in red in the downloaded file.</p>
-        
-        <form action="/compare" method="post" enctype="multipart/form-data">
-            <div class="file-input-group">
-                <label for="file1">First Excel File</label>
-                <input type="file" name="file1" id="file1" accept=".xlsx, .xlsm" required>
+
+<body
+    class="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 min-h-screen flex flex-col items-center justify-center p-4 selection:bg-orange-100 selection:text-orange-800">
+
+    <div
+        class="max-w-2xl w-full bg-white/90 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden border border-orange-100/50">
+
+        <!-- Header Section -->
+        <div class="bg-gradient-to-r from-orange-500 to-amber-500 p-8 text-center">
+            <h1 class="text-3xl font-bold text-white mb-2 tracking-tight">Excel 比對工具</h1>
+        </div>
+
+        <div class="p-8 space-y-8">
+            <form action="/compare" method="post" enctype="multipart/form-data" class="space-y-6">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- File 1 Input -->
+                    <div class="group">
+                        <label for="file1"
+                            class="block text-sm font-semibold text-gray-700 mb-2 group-hover:text-orange-600 transition-colors">
+                            原始檔案 (File 1)
+                        </label>
+                        <div class="relative">
+                            <input type="file" name="file1" id="file1" accept=".xlsx, .xlsm" required class="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2.5 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-bold
+                                file:bg-orange-50 file:text-orange-700
+                                hover:file:bg-orange-100
+                                border border-gray-200 rounded-xl cursor-pointer bg-gray-50/50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all duration-200
+                                ">
+                        </div>
+                    </div>
+
+                    <!-- File 2 Input -->
+                    <div class="group">
+                        <label for="file2"
+                            class="block text-sm font-semibold text-gray-700 mb-2 group-hover:text-amber-600 transition-colors">
+                            新檔案 (File 2)
+                        </label>
+                        <div class="relative">
+                            <input type="file" name="file2" id="file2" accept=".xlsx, .xlsm" required class="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2.5 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-bold
+                                file:bg-amber-50 file:text-amber-700
+                                hover:file:bg-amber-100
+                                border border-gray-200 rounded-xl cursor-pointer bg-gray-50/50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all duration-200
+                                ">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-orange-500/30 transform hover:scale-[1.01] transition-all duration-200 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    開始比對並下載
+                </button>
+            </form>
+
+            <!-- Info Section -->
+            <div class="border-t border-gray-100 pt-8">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    使用說明
+                </h2>
+
+                <div class="grid md:grid-cols-2 gap-8 text-sm">
+                    <!-- Rules -->
+                    <div class="space-y-3">
+                        <h3 class="font-semibold text-gray-700">1. 標題列偵測規則</h3>
+                        <p class="text-gray-600 leading-relaxed">
+                            系統會自動掃描前 20 行。若該行包含以下任一關鍵字（不分大小寫），即被視為標題列：
+                        </p>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <span
+                                class="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-md font-mono text-xs border border-gray-200">ID</span>
+                            <span
+                                class="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-md font-mono text-xs border border-gray-200">SKU</span>
+                            <span
+                                class="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-md font-mono text-xs border border-gray-200">#</span>
+                        </div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="space-y-3">
+                        <h3 class="font-semibold text-gray-700">2. 比對結果圖例</h3>
+                        <ul class="space-y-2.5">
+                            <li class="flex items-center gap-3 text-gray-600">
+                                <span
+                                    class="w-6 h-6 rounded bg-[#00FF00] border border-green-200 shadow-sm flex-shrink-0"></span>
+                                <span>標題列 (Header)</span>
+                            </li>
+                            <li class="flex items-center gap-3 text-gray-600">
+                                <span
+                                    class="w-6 h-6 rounded bg-[#FFFF00] border border-yellow-200 shadow-sm flex-shrink-0"></span>
+                                <span>比對關鍵欄位 (Key Column)</span>
+                            </li>
+                            <li class="flex items-center gap-3 text-gray-600">
+                                <span
+                                    class="w-6 h-6 rounded bg-white border border-red-200 shadow-sm flex items-center justify-center font-bold text-red-600 flex-shrink-0">A</span>
+                                <span>差異數值 (紅色標示)</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
-            
-            <div class="file-input-group">
-                <label for="file2">Second Excel File</label>
-                <input type="file" name="file2" id="file2" accept=".xlsx, .xlsm" required>
-            </div>
-            
-            <button type="submit" class="btn-compare">Compare Files</button>
-        </form>
+        </div>
     </div>
+
+    <div class="mt-8 text-center text-gray-400 text-xs">
+        <p>Excel Comparison Tool v1.3</p>
+    </div>
+
 </body>
+
 </html>

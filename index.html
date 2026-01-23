@@ -209,6 +209,12 @@
                         const tr = document.createElement('tr');
                         tr.className = 'border-b border-gray-100 hover:bg-gray-50/50';
 
+                        let hasDiff = false;
+                        const isHeader = (R === range.s.r);
+
+                        // Use a temporary fragment to build row cells, so we can decide to append or not
+                        const rowFragment = document.createDocumentFragment();
+
                         for (let C = range.s.c; C <= range.e.c; ++C) {
                             const cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
                             const cell1 = ws1[cellAddr];
@@ -219,7 +225,7 @@
                                 // Empty cell, still render td
                                 const td = document.createElement('td');
                                 td.className = 'px-4 py-2 border-r border-gray-100 last:border-r-0';
-                                tr.appendChild(td);
+                                rowFragment.appendChild(td);
                                 continue;
                             }
 
@@ -248,6 +254,7 @@
                                     }
                                 };
                                 tdClass += ' text-red-600 font-bold';
+                                hasDiff = true;
                             }
                             newWs[cellAddr] = newCell;
 
@@ -255,9 +262,21 @@
                             const td = document.createElement('td');
                             td.className = tdClass;
                             td.textContent = (cell1.v !== undefined) ? cell1.v : "";
-                            tr.appendChild(td);
+
+                            if (isHeader) {
+                                td.className += ' bg-green-100 font-semibold';
+                            }
+
+                            rowFragment.appendChild(td);
                         }
-                        tbody.appendChild(tr);
+
+                        // Append row cells to tr
+                        tr.appendChild(rowFragment);
+
+                        // Only add row if header or diff
+                        if (isHeader || hasDiff) {
+                            tbody.appendChild(tr);
+                        }
                     }
                     table.appendChild(tbody);
                     tableWrapper.appendChild(table);
@@ -269,7 +288,7 @@
 
                 XLSX.writeFile(outputWb, "comparison_result.xlsx");
 
-                status.textContent = "完成！下載已開始，預覽如下：";
+                status.textContent = "完成！下載已開始，預覽如下(僅顯示差異)：";
                 status.className = "text-center text-sm text-green-600 font-bold";
 
                 // Show results, hide info

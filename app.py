@@ -33,18 +33,19 @@ def workbook_to_view_data(wb):
         # Iterate rows
         for row in ws.iter_rows():
             row_data = []
+            has_diff = False
+            is_header = False
+            
             for cell in row:
                 cell_info = {'value': cell.value if cell.value is not None else ""}
                 
                 # Check style
-                # Note: openpyxl colors can be RGB objects or legacy indexed colors. 
-                # We check the specific properties we set.
-                
                 style_class = ""
                 
                 # Check Font Color (Red indicates diff)
                 if cell.font and cell.font.color and cell.font.color.rgb == "FFFF0000":
                     style_class += " text-red-600 font-bold"
+                    has_diff = True
                 
                 # Check Fill Color
                 if cell.fill and cell.fill.start_color:
@@ -52,12 +53,17 @@ def workbook_to_view_data(wb):
                     # Green: FF00FF00, Yellow: FFFFFF00, Red Fill: FFFF0000 (We used red font mainly, but fill was defined too)
                     if color == "FF00FF00":
                         style_class += " bg-green-100"
+                        is_header = True
                     elif color == "FFFFFF00":
                         style_class += " bg-yellow-100"
                 
                 cell_info['class'] = style_class
                 row_data.append(cell_info)
-            sheet_data['rows'].append(row_data)
+            
+            # Only append row if it's a header or has a difference
+            if is_header or has_diff:
+                sheet_data['rows'].append(row_data)
+        
         sheets.append(sheet_data)
     return sheets
 

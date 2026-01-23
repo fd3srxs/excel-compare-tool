@@ -1,5 +1,6 @@
 import os
-from flask import Flask, render_template, request, send_file
+import uuid
+from flask import Flask, render_template, request, send_file, redirect, url_for
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import PatternFill, Font, Color
 from copy import copy
@@ -7,6 +8,58 @@ import io
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB limit
+
+# In-memory simple cache for downloads (Not suitable for production with multiple workers)
+DOWNLOAD_CACHE = {}
+
+def workbook_to_view_data(wb):
+    """
+    Convert workbook to a structure for rendering in HTML.
+    Returns: list of sheets, where each sheet is {'name': str, 'rows': list of lists of dicts}
+    Cell dict: {'value': str, 'class': str (red/green/yellow/normal)}
+    """
+    sheets = []
+    
+    # Define color mappings based on the styles used in compare_excels
+    # Red Font -> diff
+    # Green Fill -> header
+    # Yellow Fill -> key
+    
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        sheet_data = {'name': sheet_name, 'rows': []}
+        
+        # Determine max columns to ensure grid alignment
+        # Iterate rows
+        for row in ws.iter_rows():
+            row_data = []
+            for cell in row:
+                cell_info = {'value': cell.value if cell.value is not None else ""}
+                
+                # Check style
+                # Note: openpyxl colors can be RGB objects or legacy indexed colors. 
+                # We check the specific properties we set.
+                
+                style_class = ""
+                
+                # Check Font Color (Red indicates diff)
+                if cell.font and cell.font.color and cell.font.color.rgb == "FFFF0000":
+                    style_class += " text-red-600 font-bold"
+                
+                # Check Fill Color
+                if cell.fill and cell.fill.start_color:
+                    color = cell.fill.start_color.rgb 
+                    # Green: FF00FF00, Yellow: FFFFFF00, Red Fill: FFFF0000 (We used red font mainly, but fill was defined too)
+                    if color == "FF00FF00":
+                        style_class += " bg-green-100"
+                    elif color == "FFFFFF00":
+                        style_class += " bg-yellow-100"
+                
+                cell_info['class'] = style_class
+                row_data.append(cell_info)
+            sheet_data['rows'].append(row_data)
+        sheets.append(sheet_data)
+    return sheets
 
 def compare_excels(file1, file2):
     wb1 = load_workbook(file1, data_only=True)
@@ -52,22 +105,10 @@ def compare_excels(file1, file2):
                 break
         
         # If ID column found and ws2 exists, build index for ws2
-        # We assume the header in ws2 is at the same row index as ws1 ?? 
-        # Or should we just scan ws2 too? 
-        # For now, let's assume data starts after header_row_idx.
-        
         ws2_index = {} # Map ID -> Row Object (or Row Index)
         if id_col_idx and ws2 and header_row_idx:
-            # Iterate rows in ws2 starting from header_row_idx + 1?
-            # Or just iterate all rows and skip if row index <= header_row_idx?
-            # Actually, ws2 might have different header position?
-            # Let's assume simplest case: structure is similar.
-            
             for row in ws2.iter_rows(min_row=header_row_idx + 1):
-                # Get the cell in the ID column
-                # row is a tuple of cells. Index is col_idx - 1
                 try:
-                    # Check if the row is long enough
                     if len(row) >= id_col_idx:
                         id_cell = row[id_col_idx - 1]
                         val = id_cell.value
@@ -103,9 +144,6 @@ def compare_excels(file1, file2):
                 else:
                     # For header row or pre-header rows, try to match by position
                     if header_row_idx and current_row_idx == header_row_idx:
-                         # This is the header row.
-                         # Try to find header row in ws2?
-                         # For now, simplistic: match same row index
                          try:
                              row2 = ws2[current_row_idx]
                          except IndexError:
@@ -136,7 +174,6 @@ def compare_excels(file1, file2):
                     if row2:
                         try:
                             # Verify row2 has this column
-                            # i is 0-based index of cell in row
                             if i < len(row2):
                                 cell2 = row2[i]
                                 if cell.value != cell2.value:
@@ -174,16 +211,32 @@ def compare():
     if file1 and file2:
         output_wb = compare_excels(file1, file2)
         
+        # 1. Generate Table Project View Data
+        view_data = workbook_to_view_data(output_wb)
+        
+        # 2. Save for download
+        download_id = str(uuid.uuid4())
         output_stream = io.BytesIO()
         output_wb.save(output_stream)
         output_stream.seek(0)
+        DOWNLOAD_CACHE[download_id] = output_stream
         
+        return render_template('index.html', result=view_data, download_id=download_id)
+    
+    return redirect(url_for('index'))
+
+@app.route('/download/<download_id>')
+def download_file(download_id):
+    if download_id in DOWNLOAD_CACHE:
+        stream = DOWNLOAD_CACHE[download_id]
+        stream.seek(0)
         return send_file(
-            output_stream,
+            stream,
             as_attachment=True,
             download_name='comparison_result.xlsx',
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
+    return "File not found or expired", 404
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

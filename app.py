@@ -103,7 +103,7 @@ def compare_excels(file1, file2):
             for cell in row:
                 if cell.value:
                     val_str = str(cell.value).lower()
-                    if "id" in val_str or "sku" in val_str or "#" in val_str:
+                    if "id" in val_str or "sku" in val_str or "#" in val_str or "悅佳貨號" in val_str:
                         id_col_idx = cell.column
                         header_row_idx = cell.row
                         break
